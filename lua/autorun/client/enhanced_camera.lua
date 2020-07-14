@@ -89,6 +89,8 @@ function EnhancedCamera:SetModel(model)
     self.skelEntity:SetModel(model)
   end
 
+  self.skelEntity.neck = self.skelEntity:LookupBone("ValveBiped.Bip01_Neck1") or 0
+
   self.ragdollSequence = self.entity:LookupSequence("ragdoll")
   self.idleSequence = self.entity:LookupSequence("idle_all_01")
 end
@@ -159,7 +161,9 @@ function EnhancedCamera:ShouldDraw()
     LocalPlayer():Alive() and
     GetViewEntity() == LocalPlayer() and
     not LocalPlayer():ShouldDrawLocalPlayer() and
-    LocalPlayer():GetObserverMode() == 0
+    LocalPlayer():GetObserverMode() == 0 and
+    self.skelEntity.neck and
+    self.skelEntity.neck ~= 0
 end
 
 function EnhancedCamera:GetPose()
@@ -175,7 +179,7 @@ function EnhancedCamera:GetPose()
   elseif string.StartWith(seqname, "drive") then
     return "drive"
   end
-  local pose = string.sub(seqname, string.find(seqname, "_") + 1)
+  local pose = string.sub(seqname, (string.find(seqname, "_") or 0) + 1)
   pose = (wep and wep.DefaultHoldType) or pose
   if string.find(pose, "all") then
     return "normal"
@@ -300,35 +304,45 @@ function EnhancedCamera:OnPoseChange()
   local wep = LocalPlayer():GetActiveWeapon()
   local name = IsValid(wep) and wep:GetClass() or ""
   local bone = self.entity:LookupBone("ValveBiped.Bip01_Head1")
-  self.entity:ManipulateBoneScale(bone, vector_origin)
-  if not cvarHair:GetBool() then
-    self.entity:ManipulateBonePosition(bone, Vector(-128, 128, 0))
+  if bone then
+    self.entity:ManipulateBoneScale(bone, vector_origin)
+    if not cvarHair:GetBool() then
+      self.entity:ManipulateBonePosition(bone, Vector(-128, 128, 0))
+    end
   end
   if self.apiBoneHide['l_arm'] or self.reloading or not (
       (POSE_SHOW_ARM.left[self.pose] or
        NAME_SHOW_ARM.left[name]) and not
        NAME_HIDE_ARM.left[name]) then
     bone = self.entity:LookupBone("ValveBiped.Bip01_L_Upperarm")
-    self.entity:ManipulateBoneScale(bone, vector_origin)
-    self.entity:ManipulateBonePosition(bone, Vector(0, 0, -128))
+    if bone then
+       self.entity:ManipulateBoneScale(bone, vector_origin)
+       self.entity:ManipulateBonePosition(bone, Vector(0, 0, -128))
+    end
   end
   if self.apiBoneHide['r_arm'] or self.reloading or not (
       (POSE_SHOW_ARM.right[self.pose] or
        NAME_SHOW_ARM.right[name]) and not
        NAME_HIDE_ARM.right[name]) then
     bone = self.entity:LookupBone("ValveBiped.Bip01_R_Upperarm")
-    self.entity:ManipulateBoneScale(bone, vector_origin)
-    self.entity:ManipulateBonePosition(bone, Vector(0, 0, 128))
+    if bone then
+       self.entity:ManipulateBoneScale(bone, vector_origin)
+       self.entity:ManipulateBonePosition(bone, Vector(0, 0, 128))
+    end
   end
   if self.apiBoneHide['l_leg'] then
     bone = self.entity:LookupBone("ValveBiped.Bip01_L_Thigh")
-    self.entity:ManipulateBoneScale(bone, vector_origin)
-    self.entity:ManipulateBonePosition(bone, Vector(0, 0, -128))
+    if bone then
+       self.entity:ManipulateBoneScale(bone, vector_origin)
+       self.entity:ManipulateBonePosition(bone, Vector(0, 0, -128))
+    end
   end
   if self.apiBoneHide['r_leg'] then
     bone = self.entity:LookupBone("ValveBiped.Bip01_R_Thigh")
-    self.entity:ManipulateBoneScale(bone, vector_origin)
-    self.entity:ManipulateBonePosition(bone, Vector(0, 0, -128))
+    if bone then
+       self.entity:ManipulateBoneScale(bone, vector_origin)
+       self.entity:ManipulateBonePosition(bone, Vector(0, 0, -128))
+    end
   end
 
   -- Set pose-specific view offset
@@ -443,7 +457,7 @@ function EnhancedCamera:Think(maxSeqGroundSpeed)
   end
 
   -- Update skeleton neck offset
-  self.neckOffset = self.skelEntity:GetBonePosition(self.skelEntity:LookupBone("ValveBiped.Bip01_Neck1"))
+  self.neckOffset = self.skelEntity:GetBonePosition(self.skelEntity.neck)
 end
 
 hook.Add("UpdateAnimation", "EnhancedCamera:UpdateAnimation", function(ply, velocity, maxSeqGroundSpeed)
